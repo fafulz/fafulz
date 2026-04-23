@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>福建省景区地理信息展示</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.29"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body, #viewDiv {
+            height: 100%;
+            width: 100%;
+        }
+        /* 底图切换面板 */
+        .basemap-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 0 6px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .basemap-btn {
+            display: block;
+            width: 100%;
+            margin-bottom: 5px;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            background: #f5f5f5;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .basemap-btn.active {
+            background: #165DFF;
+            color: white;
+            border-color: #165DFF;
+        }
+    </style>
+</head>
+<body>
+    <div id="viewDiv"></div>
+    <!-- 底图库切换面板 -->
+    <div class="basemap-switcher">
+        <button class="basemap-btn active" data-url="https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={col}&y={row}&z={level}">高德街道图</button>
+        <button class="basemap-btn" data-url="https://webst01.is.autonavi.com/appmaptile?style=6&x={col}&y={row}&z={level}">高德卫星图</button>
+    </div>
+
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/WebTileLayer",
+            "esri/layers/FeatureLayer",
+            "esri/widgets/Search",
+            "esri/widgets/ScaleBar",
+            "esri/widgets/Legend"
+        ], function(Map, MapView, WebTileLayer, FeatureLayer, Search, ScaleBar, Legend) {
+
+            // 1. 初始化默认底图（高德街道图）
+            let currentBasemap = new WebTileLayer({
+                urlTemplate: "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={col}&y={row}&z={level}",
+                title: "高德街道图"
+            });
+
+            // 2. 创建地图
+            const map = new Map({
+                layers: [currentBasemap]
+            });
+
+            // 3. 创建地图视图，初始定位福建省
+            const view = new MapView({
+                container: "viewDiv",
+                map: map,
+                center: [119.3062, 26.0745], // 福建省中心
+                zoom: 8,
+                spatialReference: 3857
+            });
+
+            // 4. 加载福建省景区专题图层
+            const scenicLayer = new FeatureLayer({
+                url: "https://www.geosceneonline.cn/server/rest/services/Hosted/福建省发源地___福建省景区_的最相似位置/FeatureServer/0",
+                title: "福建省景区分布"
+            });
+            map.add(scenicLayer);
+
+            // 5. 底图切换功能
+            const buttons = document.querySelectorAll(".basemap-btn");
+            buttons.forEach(btn => {
+                btn.addEventListener("click", function() {
+                    buttons.forEach(b => b.classList.remove("active"));
+                    this.classList.add("active");
+                    map.remove(currentBasemap);
+                    currentBasemap = new WebTileLayer({
+                        urlTemplate: this.dataset.url,
+                        title: this.innerText
+                    });
+                    map.add(currentBasemap, 0); // 底图放在最底层
+                });
+            });
+
+            // 6. 添加所有微件
+            view.when(() => {
+                // 搜索框（左上角）
+                const searchWidget = new Search({
+                    view: view
+                });
+                view.ui.add(searchWidget, "top-left");
+
+                // 比例尺（左下角）
+                const scaleBar = new ScaleBar({
+                    view: view,
+                    unit: "metric" // 公制单位
+                });
+                view.ui.add(scaleBar, "bottom-left");
+
+                // 图例（右下角）
+                const legend = new Legend({
+                    view: view
+                });
+                view.ui.add(legend, "bottom-right");
+
+                console.log("✅ 所有功能加载成功！");
+            });
+        });
+    </script>
+</body>
+</html>
